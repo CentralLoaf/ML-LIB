@@ -10,7 +10,7 @@ class Activations:
     # ACTIVATION FUNCTIONS
     # ========================
     
-    def none(x, dx=False):
+    def linear(x, dx=False):
         """
         No activation function (linear)
 
@@ -79,10 +79,9 @@ class Activations:
             x: The data to apply the activation to.
             dx (bool): Defines if the differenciated function should be applied.
         """
-        smout = np.exp(x) / sum(np.exp(x))
-        if np.isnan(smout.any()):
-            print(smout, np.exp(x), sum(np.exp(x)))
-        return smout if not dx else smout * (1 - smout)
+        softmax_ = np.exp(x) / sum(np.exp(x))
+        #return softmax_ if not dx else np.diagflat(s := softmax_.reshape(-1,1)) - np.dot(s, s.T)
+        return softmax_
             
     def step(x, dx=False):
         """
@@ -140,7 +139,6 @@ class Loss:
         """
         # CATEGORIAL CROSS-ENTROPY LOSS
         epsilon = 1e-10
-        #print(f'CCE :   {np.log(y_pred + epsilon), y_actu / (y_pred + epsilon)}')
         return -np.mean(y_actu * np.log(y_pred + epsilon), axis=0) if not dx else -np.mean(y_actu / (y_pred + epsilon), axis=0)
     
     

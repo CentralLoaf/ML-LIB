@@ -1,5 +1,4 @@
 import numpy as np
-import time
 import matplotlib.pyplot as plt
 import pickle
 
@@ -29,19 +28,23 @@ class MultilayerPerceptron:
 
     def __init__(self, *args, loss_func):
         # list containing layer objs for each layer and easy retrival
-        self.layers = args[0]
+        self.layers = args
         # std and mean for inputs, conforms to normalization
         self.normdata = {}
         # set the loss of the network, used to check for best epoch
         self.loss = None
         # loss function
         self.loss_func = loss_func
+        # define the params (w / b)
+        self.weight_matrices = None
+        self.bias_vectors = None
 
     def __repr__(self) -> str:
         # flip through all inputs, hidden nodes, outputs
         string = ''
-        for layer in self.layers:
-            string += layer + '\n'
+        for i, layer in enumerate(self.layers):
+            string += f'\033[0m{str(layer)}{("\n\t\033[90mweights:\n" + str(self.weight_matrices[i])) if i != len(self.layers)-1 and self.weight_matrices is not None else ""}{("\n\t\033[90mbiases:\n" + str(self.bias_vectors[i-1])) if i != 0 and self.bias_vectors is not None else ""}\n'
+        return string + '\033[0m'
 
     # create and store connections between all inputs, hidden neurons, outputs
     def generate_params(self, weight_init: str = 'xaviar', bias_init: str = 'small-normal', rounding_place: int = None) -> None:
@@ -159,8 +162,8 @@ class MultilayerPerceptron:
             batch_size (int): The sizes of the training mini-batches
         """
         batch_count = int(np.floor(len(trainx) / batch_size))
-        xbatches = np.array([trainx[i*batch_size:(i+1)*batch_size][0] for i in range(batch_count)])
-        ybatches = np.array([trainy[i*batch_size:(i+1)*batch_size][0] for i in range(batch_count)])
+        xbatches = np.array([trainx[i*batch_size:(i+1)*batch_size] for i in range(batch_count)])
+        ybatches = np.array([trainy[i*batch_size:(i+1)*batch_size] for i in range(batch_count)])
         return xbatches, ybatches
     
     def prepdata(self, x: np.ndarray, y: np.ndarray, training_portion: float = 0.8, testing_portion: float = 0.2, batch_size: int = 1, norm_func = None):
@@ -181,7 +184,6 @@ class MultilayerPerceptron:
             self.fit_norm(trainx, trainy, norm_func)
             trainx = self.norm(x=trainx)[0]
             testx = self.norm(x=testx)[0]
-            pass
         trainx, trainy = MultilayerPerceptron.batch_div(trainx, trainy, batch_size)
         return trainx, trainy, testx, testy
 
@@ -233,7 +235,7 @@ class MultilayerPerceptron:
     
     
 
-    def train(self, learning_algo: function, trainx: np.ndarray, trainy: np.ndarray, testx: np.ndarray, testy: np.ndarray, epochs: int, lr: float) -> None:
+    def train(self, trainx: np.ndarray, trainy: np.ndarray, testx: np.ndarray, testy: np.ndarray, batch_size: int, epochs: int, optimizer: object) -> None:
         """
         Trains the network based on a dataset, uses STD
 
@@ -249,6 +251,9 @@ class MultilayerPerceptron:
         
         if len(trainx) != len(trainy):
             raise ValueError(f'Input and output data are unequal ({len(trainx)} : {len(trainy)})')
+        
+        # Pre-training cost check
+        print(f'Pre-Training Cost: {self.cost(testx, testy)}')
         
         for epoch in range(epochs):
             for x, y in zip(trainx, trainy):
@@ -269,28 +274,19 @@ class MultilayerPerceptron:
                     activated_sums.append(layer.activation(z))
                 
                 # ========================
-                # BACKWARD PASS (OUTPUT LAYER)
+                # BACKWARD PASS
                 # ======================== 
                 
-                # calc all necessary gradients
-                dx_loss = self.loss_func(y_pred=activated_sums[-1], y_actu=y, dx=True)
-                dx_out_actisum = self.layers[-1].activation(weighted_sums[-1], dx=True)
+                # Use the passed optimizer to complete the backward pass
+                weight_updates, bias_updates = optimizer.backpass(x=x, y=y, network=self, batch_size=batch_size, weighted_sums=weighted_sums, activated_sums=activated_sums)
                 
-                # error term for the first hidden layer
-                eterms = np.array([dx_loss * dx_out_actisum])
-                
-                # parameter updates for weights and biases
-                wei_eterm = dx_out_actisum.T.dot(dx_loss) / int(x.size)
-                self.weight_matrices[-1] -= wei_eterm * lr
-                self.bias_vectors[-1] -= np.mean(dx_loss, axis=0, keepdims=True) * lr
-                
-                # ========================
-                # BACKWARD PASS (HIDDEN LAYERS)
-                # ========================
-                
-                for k, layer in enumerate(self.layers[:-1][::-1]):
+                # Unpack all weight / bias updates
+                for i, (weight_matrix, bias_vector) in enumerate(zip(weight_updates, bias_updates)):
+                    self.weight_matrices[i] += weight_matrix
+                    self.bias_vectors[i] += bias_vector
                     
-                    dx_out_weightedsum = self.weight_matrices[-1]
+            # Display the loss at the end of each epoch
+            print(f'Epoch {epoch+1} / {epochs} Completed. Cost: {self.cost(testx, testy)}')
 
 # ------------------------
 # POST-PROCESSING
@@ -306,7 +302,7 @@ class MultilayerPerceptron:
         """
         return np.mean(self.loss_func(self.predict(testx), testy))
         
-    def graph1_1(self, input_dtp: np.ndarray, output_dtp: np.ndarray) -> None:
+    def graph(self, input_dtp: np.ndarray, output_dtp: np.ndarray) -> None:
         """
         Graphs the results of the input data, only if the network has 1 input neuron and 1 output neuron.
 
@@ -314,6 +310,9 @@ class MultilayerPerceptron:
             input_dtp (array): The inputs for the network
             input_dtp (array): The inputs for the network
         """
+        if self.layers[0].nodes != 1 or self.layers[-1].nodes != 1:
+            raise ValueError('Dataset dimensions exceed maximum for 2D graphing (1, 1).')
+        
         odtp_pred = np.array([self.predict(self.norm(x=i)[0]) for i in input_dtp]) 
         
         plt.plot(input_dtp, output_dtp, color='red', label='Actual')
@@ -337,9 +336,9 @@ class MultilayerPerceptron:
             return self.calc_loss(x, y)
         
         def accuracy(x: np.ndarray, y: np.ndarray):
-                if len(y.shape) != 1:
-                    y = np.argmax(y, axis=-1)
-                return np.mean(np.argmax(self.predict(x), axis=-1) == y)
+            if len(y.shape) != 1:
+                y = np.argmax(y, axis=-1)
+            return np.mean(np.argmax(self.predict(x), axis=-1) == y)
         
         def mae(x: np.ndarray, y: np.ndarray):
             return np.mean(np.abs(y - self.predict(x)))
