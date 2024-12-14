@@ -1,0 +1,12 @@
+setup.py
+mlib/__init__.py
+mlib/equations.py
+mlib/optimizers.py
+mlib.egg-info/PKG-INFO
+mlib.egg-info/SOURCES.txt
+mlib.egg-info/dependency_links.txt
+mlib.egg-info/requires.txt
+mlib.egg-info/top_level.txt
+mlib/algorithms/__init__.py
+mlib/algorithms/mlp.py
+mlib/models/__init__.py

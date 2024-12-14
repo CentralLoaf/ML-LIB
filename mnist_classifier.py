@@ -1,15 +1,12 @@
-from MlLib.algorithms.mlp import MultilayerPerceptron as mp
-from MlLib.algorithms.mlp import *
-from MlLib.equations import *
-from MlLib.optimizers import *
+from mlib.algorithms.mlp import *
+from mlib.equations import *
+from mlib.optimizers import *
 import numpy as np
-
-
 
 
 import tensorflow as tf
                  
-net = MultilayerPerceptron(Layer(784), Layer(360, Activations.leaky_relu), Layer(120, Activations.leaky_relu), Layer(40, Activations.leaky_relu), Layer(10, Activations.sigmoid), loss_func=Loss.bce)
+net = MultilayerPerceptron(Layer(784), Layer(360, Activations.relu), Layer(120, Activations.relu), Layer(40, Activations.relu), Layer(10, Activations.sigmoid), loss_func=Loss.bce)
 net.generate_params(weight_init='xaviar')
 
 
@@ -29,16 +26,16 @@ lab = np.concatenate((np.array([np.array([1 if i == digit else 0 for i in range(
 train_pix, train_lab, test_pix, test_lab = net.prepdata(pix, lab, 0.8, 0.2, 64, None)
 
 
-op = Adam(lr=0.0001)
+'''op = Adam(lr=0.0001)
 op.init(net)
 net.train(train_pix, train_lab, test_pix, test_lab, batch_size=64, optimizer=op, epochs=20, metrics=['loss', 'accuracy'])
 net.save('mnist_classifier.pkl')
-net.graph_metrics(20)
+net.graph_metrics(20)'''
 
-'''net = MultilayerPerceptron.load('mnist_classifier.pkl')
+net = MultilayerPerceptron.load("mnist_classifier.pkl")
 
 for digit, pred, prob in [(np.argmax(test_lab[i]), np.argmax(net.predict(test_pix[i])), net.predict(test_pix[i])) for i in range(100)]:
-        print(f'DIGIT: {digit}, PRED: {pred}, PROB: {prob}')'''
+        print(f'DIGIT: {digit}, PRED: {pred}, PROB: {prob}')
         
 
 '''x = np.array([[15, 10], [15, 10], [15, 10], [15, 10], [15, 10], [15, 20], [15, 20], [15, 20], [15, 20], [15, 20], [15, 30], [15, 30], [15, 30], [15, 30], [15, 30], [15, 40], [15, 40], [15, 40], [15, 40], [15, 40], [15, 50], [15, 50], [15, 50], [15, 50], [15, 50],

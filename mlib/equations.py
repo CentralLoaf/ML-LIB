@@ -89,7 +89,7 @@ class Activations:
             x: The data to apply the activation to.
             dx (bool): Defines if the differenciated function should be applied.
         """
-        return np.exp(x - np.max(x)) / sum(np.exp(x - np.max(x)))
+        return np.exp(x - np.max(x)) / (sum(np.exp(x - np.max(x))) + 1e-10)
            
     def step(x, dx=False):
         """
